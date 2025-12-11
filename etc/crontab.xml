@@ -4,5 +4,8 @@
         <job name="getnet_cronjob" instance="GetnetArg\Payments\Cron\CancelaRejectedCron" method="execute">
             <schedule>*/30 * * * *</schedule>
         </job>
+        <job name="getnet_capture_authorized" instance="GetnetArg\Payments\Cron\CaptureAuthorizedCron" method="execute">
+            <schedule>*/10 * * * *</schedule>
+        </job>
     </group>
 </config>
