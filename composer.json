@@ -5,7 +5,7 @@
 	"version" : "1.2.0",
 	"plugin-name" : "GetnetArg-Magento-Plugin",
 	"require" : {
-		"php" : ">=7.3",
+		"php" : ">=8.1",
 		"ext-json" : "*"
 	},
 	"license": [

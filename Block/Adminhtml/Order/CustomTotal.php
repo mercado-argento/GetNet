@@ -19,11 +19,11 @@ class CustomTotal extends Template
     {
         $order = $this->getOrder();
         $order = $this->initTotals();
-/*        
+/*
         try{
          $payment = $order->getPayment();
          $currency = $order->getOrderCurrencyCode();
-          
+
             $interes = $payment->getAdditionalInformation('interes');
             $interesFinal = $interes / 100;
         } catch (\Exception $e) {
@@ -43,9 +43,9 @@ class CustomTotal extends Template
         $source = $parent->getSource();
         $order = $parent->getOrder();
         
-        try{
-         $payment = $order->getPayment();
-         $currency = $order->getOrderCurrencyCode();
+        try {
+            $payment = $order->getPayment();
+            $currency = $order->getOrderCurrencyCode();
           
             $interes = $payment->getAdditionalInformation('interes');
             $interesFinal = $interes / 100;
@@ -57,16 +57,15 @@ class CustomTotal extends Template
 
 //        if($order->getCustomfee()!=0){
             $customAmount = new \Magento\Framework\DataObject(
-                    [
+                [
                         'code' => 'customfee',
                         'strong' => false,
                         'value' => $interesFinal,
                         'label' => __($title),
                     ]
-                );
+            );
             $parent->addTotal($customAmount, 'shipping');
 //        }
         return $this;
     }
-    
 }

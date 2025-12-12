@@ -3,7 +3,7 @@
  * Plugin Name:       Magento GetNet
  * Plugin URI:        -
  * Description:       -
- * License:           Copyright © 2023 PagoNxt Merchant Solutions S.L. and Santander España Merchant Services, Entidad de Pago, S.L.U. 
+ * License:           Copyright © 2023 PagoNxt Merchant Solutions S.L. and Santander España Merchant Services, Entidad de Pago, S.L.U.
  * You may not use this file except in compliance with the License which is available here https://opensource.org/licenses/AFL-3.0 
  * License URI:       https://opensource.org/licenses/AFL-3.0
  *
@@ -13,14 +13,25 @@ namespace GetnetArg\Payments\Plugin;
 class OrderStatusPlugin
 {
 
+    /**
+     * @var \Psr\Log\LoggerInterface
+     */
     protected $logger;
 
+    /**
+     * @param \Psr\Log\LoggerInterface $logger
+     */
     public function __construct(
         \Psr\Log\LoggerInterface $logger
     ) {
         $this->logger = $logger;
     }
 
+    /**
+     * @param \Magento\Sales\Model\Service\OrderService $subject
+     * @param \Magento\Sales\Model\Order $order
+     * @return \Magento\Sales\Model\Order[]
+     */
     public function beforePlace(
         \Magento\Sales\Model\Service\OrderService $subject,
         \Magento\Sales\Model\Order $order
@@ -37,9 +48,8 @@ class OrderStatusPlugin
             $order->setStatus(\Magento\Sales\Model\Order::STATE_PENDING_PAYMENT);
         }
 
-        $this->logger->info('------------------------------------');         
+        $this->logger->info('------------------------------------');
 
         return [$order];
     }
-
 }

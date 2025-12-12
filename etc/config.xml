@@ -9,6 +9,9 @@
                 <title>Getnet Argentina</title>
                 <payment_action>true</payment_action>
                 <create_order_before>1</create_order_before>
+                <two_step_payment>0</two_step_payment>
+                <authorized_order_status>pending_payment</authorized_order_status>
+                <captured_order_status>processing</captured_order_status>
             </argenmagento>
         </payment>
     </default>

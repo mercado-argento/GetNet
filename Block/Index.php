@@ -11,41 +11,75 @@ use GetnetArg\Payments\Model\ClientWS;
 use GetnetArg\Payments\Model\Cart as CartModel;
 use GetnetArg\Payments\Model\OrderHelper;
 
-
 class Index extends Template
 {
     const CLIENT_ID = 'payment/argenmagento/client_id';
-    
     const SECRET_ID = 'payment/argenmagento/secret_id';
-    
     const TEST_ENV = 'payment/argenmagento/test_environment';
-    
-    private $checkoutSession;
 
+    /**
+     * @var Http
+     */
     protected Http $request;
 
+    /**
+     * @var \Magento\Checkout\Model\Session
+     */
     protected $_checkoutSession;
 
+    /**
+     * @var \Magento\Customer\Model\Session
+     */
     protected $_customerSession;
 
+    /**
+     * @var \Magento\Framework\UrlInterface
+     */
     protected $urlBuilder;
 
+    /**
+     * @var ScopeConfigInterface
+     */
     private ScopeConfigInterface $scopeConfig;
 
+    /**
+     * @var ClientWS
+     */
     private ClientWS $clientWs;
 
+    /**
+     * @var OrderHelper
+     */
     private OrderHelper $orderHelper;
 
+    /**
+     * @var CartModel
+     */
     private CartModel $cartModel;
 
+    /**
+     * @var OrderCollectionFactory
+     */
     private OrderCollectionFactory $orderCollectionFactory;
 
+    /**
+     * @var OrderRepositoryInterface
+     */
     private OrderRepositoryInterface $orderRepository;
 
     /**
      * @param Template\Context $context
      * @param \Magento\Checkout\Model\Session $checkoutSession
      * @param \Magento\Customer\Model\Session $customerSession
+     * @param \Psr\Log\LoggerInterface $logger
+     * @param \Magento\Framework\UrlInterface $urlBuilder
+     * @param Http $request
+     * @param ScopeConfigInterface $scopeConfig
+     * @param ClientWS $clientWs
+     * @param OrderHelper $orderHelper
+     * @param CartModel $cartModel
+     * @param OrderCollectionFactory $orderCollectionFactory
+     * @param OrderRepositoryInterface $orderRepository
      * @param array $data
      */
     public function __construct(
@@ -62,8 +96,7 @@ class Index extends Template
         OrderCollectionFactory $orderCollectionFactory,
         OrderRepositoryInterface $orderRepository,
         array $data = []
-    )
-    {
+    ) {
         parent::__construct($context, $data);
         $this->_checkoutSession = $checkoutSession;
         $this->_customerSession = $customerSession;
@@ -82,99 +115,71 @@ class Index extends Template
     /**
      * @return string
      */
-    public function getUrlSDK(){
-
+    public function getUrlSDK()
+    {
         $test = $this->scopeConfig->getValue(self::TEST_ENV, ScopeInterface::SCOPE_STORE);
-        
-//        $this->logger->debug('TEST ENV --> ' . $test);
-        
-             if($test == '1'){
-                    $url = 'https://www.pre.globalgetnet.com/digital-checkout/loader.js';
-               
-             } else { //produccion
-                    $url = 'https://www.globalgetnet.com/digital-checkout/loader.js';
-             }
-        
-        return $url;
-    }
-    
+        if ($test == '1') {
+            return 'https://www.pre.globalgetnet.com/digital-checkout/loader.js';
+        }
 
-    
+        return 'https://www.globalgetnet.com/digital-checkout/loader.js';
+    }
+
     /**
      * @return string
      */
     public function getScript()
     {
         $this->logger->debug('------------------Init Script-------------------');
-
         $clienId = $this->scopeConfig->getValue(self::CLIENT_ID, ScopeInterface::SCOPE_STORE);
-
         $secret = $this->scopeConfig->getValue(self::SECRET_ID, ScopeInterface::SCOPE_STORE);
-
         $testEnv = $this->scopeConfig->getValue(self::TEST_ENV, ScopeInterface::SCOPE_STORE);
-
-        /////////GET TOKEN /////////
         $token = $this->clientWs->getToken($clienId, $secret, $testEnv);
-        
         $Client_id = $this->request->getParam('prx');
         $email = base64_decode($Client_id);
-            $this->logger->debug('ID Cliente --> ' .$email);
-
-
+        $this->logger->debug('ID Cliente --> ' .$email);
         $status = $this->getOrderStatus($email);
-
-        if($status == 'processing'){
-                $baseURL = $this->urlBuilder->getBaseUrl();
-                $urlSuccess = $baseURL . 'checkout/onepage/success';
-            
-                $script = 'window.location.replace("'.$urlSuccess.'");';
-               
+        if ($status == 'processing') {
+            $baseURL = $this->urlBuilder->getBaseUrl();
+            $urlSuccess = $baseURL . 'checkout/onepage/success';
+            $script = 'window.location.replace("'.$urlSuccess.'");';
             return $script;
         }
 
-
-        if($token == 'invalido'){
-            //enable cartItems
+        if ($token == 'invalido') {
             $this->cartModel->getCartItems($email);
             $script = 'alert("No se pudo generar la intención de pago, por favor intente de nuevo. Si el problema persiste, contacte con un ejecutivo Getnet.");
                             window.history.go(-2);';
             return $script;
         }
 
-
-        /////////GET BODY /////////
         $bodyRequest = $this->orderHelper->getBodyOrderRequest($email);
-
-        
-        
-        
-        /////////GET PAYMENT INTENT ID /////////
         $payIntentId = $this->clientWs->getPaymentIntentID($token, $bodyRequest, $testEnv);
-        
+
          $this->logger->debug('$payIntentId --> ' .$payIntentId);
-        
-        if($payIntentId == 'error') {
+
+        if ($payIntentId == 'error') {
             //enable cartItems
             $this->cartModel->getCartItems($email);
             $script = 'alert("Error al generar la intención de pago");
                         window.history.go(-2);';
 
-        } else if($payIntentId == 'currency_error') {
+        } elseif ($payIntentId == 'currency_error') {
             //enable cartItems
             $this->cartModel->getCartItems($email);
             $script = 'alert("Tipo de moneda no soportada");
                             window.history.go(-2);';
-            
-        }  else {
+
+        } else {
             $script = 'const config = {
                           "paymentIntentId": "'.$payIntentId.'",
                           "checkoutType": "iframe",
                                "accessToken": "Bearer '.$token.'"
                             };';
         }
-                
+
 //        $this->logger->debug($script);
-        
+
         return $script;
     }
 
@@ -186,13 +191,13 @@ class Index extends Template
     {
         $baseURL = $this->urlBuilder->getBaseUrl();
             $this->logger->debug($baseURL);
-            
-        $UrlCart = $baseURL . 'argenmagento/response/cart';    
+
+        $UrlCart = $baseURL . 'argenmagento/response/cart';
 
         return $UrlCart;
-    }    
-    
-    
+    }
+
+
 
 
 
@@ -209,5 +214,5 @@ class Index extends Template
         $status = $order->getStatus();
 
         return $status;
-    }   
+    }
 }

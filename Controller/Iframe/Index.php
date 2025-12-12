@@ -13,12 +13,12 @@ class Index extends Action
     protected $logger;
 
     /**
-     * 
+     *
      */
     public function __construct(
-            Context $context, 
-            PageFactory $resultPageFactory,
-            \Psr\Log\LoggerInterface $logger
+        Context $context,
+        PageFactory $resultPageFactory,
+        \Psr\Log\LoggerInterface $logger
     ) {
         parent::__construct($context);
 
@@ -30,13 +30,12 @@ class Index extends Action
     {
         
         $this->logger->debug('----------------------------------------------');
-        $this->logger->debug('--------------Iframe After Order-------------------------'); 
+        $this->logger->debug('--------------Iframe After Order-------------------------');
         
 
         $resultPage = $this->resultPageFactory->create();
 //        $resultPage->getConfig()->getTitle()->set(__('Getnet By Santander'));
 
         return $resultPage;
-        
     }
 }

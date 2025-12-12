@@ -27,6 +27,21 @@
                     <label>Test Environment</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
+                <field id="two_step_payment" translate="label" type="select" sortOrder="7" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Two-Step Payment</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="authorized_order_status" translate="label" type="select" sortOrder="8" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Order Status for Authorized</label>
+                    <source_model>GetnetArg\Payments\Model\System\Config\Sources\Status</source_model>
+                    <depends>
+                        <field id="two_step_payment">1</field>
+                    </depends>
+                </field>
+                <field id="captured_order_status" translate="label" type="select" sortOrder="9" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Order Status for Captured</label>
+                    <source_model>GetnetArg\Payments\Model\System\Config\Sources\Status</source_model>
+                </field>
             </group>
         </section>
     </system>

@@ -6,7 +6,7 @@
  * Version:           1.0
  * Author:            -
  * Author URI:        -
- * License:           Copyright © 2023 PagoNxt Merchant Solutions S.L. and Santander España Merchant Services, Entidad de Pago, S.L.U. 
+ * License:           Copyright © 2023 PagoNxt Merchant Solutions S.L. and Santander España Merchant Services, Entidad de Pago, S.L.U.
  * You may not use this file except in compliance with the License which is available here https://opensource.org/licenses/AFL-3.0 
  * License URI:       https://opensource.org/licenses/AFL-3.0
  *
@@ -22,7 +22,7 @@ class Directpost extends \Magento\Payment\Model\Method\AbstractMethod
      *
      * @var string
      */
-    protected $_code = 'argenmagento'; 
+    protected $_code = 'argenmagento';
 
     /**
      * Availability option

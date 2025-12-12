@@ -6,4 +6,33 @@
     <type name="Magento\Sales\Model\Order\Email\Sender\OrderSender">
         <plugin name="getnet_disable_email_on_processing" type="GetnetArg\Payments\Plugin\OrderSenderPlugin" sortOrder="11" disabled="false" />
     </type>
+    <type name="Magento\Framework\Console\CommandList">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="CheckGetnetPayment" xsi:type="object">GetnetArg\Payments\Console\Command\CheckPayment</item>
+            </argument>
+        </arguments>
+    </type>
+    <!-- start set custom file logger -->
+    <virtualType name="GetnetArg\Payments\Logger\Handler" type="Magento\Framework\Logger\Handler\Base">
+        <arguments>
+            <argument name="filesystem" xsi:type="object">Magento\Framework\Filesystem\Driver\File</argument>
+            <argument name="fileName" xsi:type="string">var/log/getnetarg-payment.log</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="GetnetArg\Payments\Logger\Logger" type="Magento\Framework\Logger\Monolog">
+        <arguments>
+            <argument name="name" xsi:type="string">Payments Logger</argument>
+            <argument name="handlers" xsi:type="array">
+                <item name="system" xsi:type="object">GetnetArg\Payments\Logger\Handler</item>
+            </argument>
+        </arguments>
+    </virtualType>
+    <!-- end set custom file logger -->
+
+    <type name="GetnetArg\Payments\Cron\OrderUpdate">
+        <arguments>
+            <argument name="logger" xsi:type="object">GetnetArg\Payments\Logger\Logger</argument>
+        </arguments>
+    </type>
 </config>

@@ -3,7 +3,7 @@
  * Plugin Name:       Magento GetNet
  * Plugin URI:        -
  * Description:       -
- * License:           Copyright © 2023 PagoNxt Merchant Solutions S.L. and Santander España Merchant Services, Entidad de Pago, S.L.U. 
+ * License:           Copyright © 2023 PagoNxt Merchant Solutions S.L. and Santander España Merchant Services, Entidad de Pago, S.L.U.
  * You may not use this file except in compliance with the License which is available here https://opensource.org/licenses/AFL-3.0 
  * License URI:       https://opensource.org/licenses/AFL-3.0
  *
@@ -14,14 +14,21 @@ use Magento\Framework\Event\ObserverInterface;
 
 class RestoreQuote implements ObserverInterface
 {
-     private $checkoutSession;
+    private $checkoutSession;
 
+    /**
+     * @param \Magento\Checkout\Model\Session\Proxy $checkoutSession
+     */
     public function __construct(
         \Magento\Checkout\Model\Session\Proxy $checkoutSession
     ) {
         $this->checkoutSession = $checkoutSession;
     }
 
+    /**
+     * @param \Magento\Framework\Event\Observer $observer
+     * @return bool
+     */
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
         $lastRealOrder = $this->checkoutSession->getLastRealOrder();
