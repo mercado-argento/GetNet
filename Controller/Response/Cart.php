@@ -33,10 +33,12 @@ class Cart extends \Magento\Framework\App\Action\Action
     protected $quoteRepository;
 
     private $orderRepository;
-    
+
     protected $quoteFactory;
-    
+
     protected $quoteIdMaskFactory;
+
+    private \GetnetArg\Payments\Model\Cart $cartHelper;
     
     /**
      * 
@@ -51,13 +53,13 @@ class Cart extends \Magento\Framework\App\Action\Action
         \Psr\Log\LoggerInterface $logger,
         \Magento\Framework\App\Request\Http $request,
         CheckoutSession $checkoutSession,
-        \Magento\Framework\ObjectManagerInterface $objectManager,
         \Magento\Checkout\Model\Cart $cart,
         \Magento\Quote\Api\CartRepositoryInterface $quoteRepository,
         \Magento\Sales\Model\OrderRepository $orderRepository,
         \Magento\Quote\Model\QuoteFactory $quoteFactory,
         \Magento\Customer\Model\Session $customerSession,
         \Magento\Quote\Model\QuoteIdMaskFactory $quoteIdMaskFactory,
+        \GetnetArg\Payments\Model\Cart $cartHelper,
         array $data = []
         ) {
             parent::__construct($context);
@@ -65,11 +67,11 @@ class Cart extends \Magento\Framework\App\Action\Action
             $this->_request = $request;
             $this->checkoutSession = $checkoutSession;
             $this->logger = $logger;
-            $this->_objectManager = $objectManager;
             $this->quoteRepository = $quoteRepository;
             $this->orderRepository = $orderRepository;
             $this->cart = $cart;
             $this->quoteIdMaskFactory = $quoteIdMaskFactory;
+            $this->cartHelper = $cartHelper;
     }
     
     /**
@@ -86,10 +88,8 @@ class Cart extends \Magento\Framework\App\Action\Action
         
         $this->logger->debug('-Last Order --> ' .$order->getIncrementId());
         $this->logger->debug('email --> ' .$email);
-        
-        $objectManager =  \Magento\Framework\App\ObjectManager::getInstance();
-        $configHelper = $objectManager->create('GetnetArg\Payments\Model\Cart');
-        $configHelper->getCartItems($email);
+
+        $this->cartHelper->getCartItems($email);
 
         try {
               $resultRedirect = $this->resultFactory->create(ResultFactory::TYPE_REDIRECT);

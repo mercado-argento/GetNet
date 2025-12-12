@@ -7,8 +7,8 @@
 namespace GetnetArg\Payments\Model;
 
 use Magento\ConfigurableProduct\Model\Product\Type\Configurable;
-use \Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Model\Order\Payment\Transaction;
+use Magento\Sales\Model\ResourceModel\Order\CollectionFactory;
 use Ramsey\Uuid\Uuid;
 
 class OrderHelper extends \Magento\Framework\View\Element\Template
@@ -22,10 +22,18 @@ class OrderHelper extends \Magento\Framework\View\Element\Template
     protected $logger;
 
     private $orderRepository;
-    
+
     private $quoteManagement;
-    
+
     protected $quoteRepository;
+
+    private \Magento\Checkout\Model\Cart $modelCart;
+
+    private \Magento\Sales\Model\Order $order;
+
+    private \Magento\Sales\Model\Order\Email\Sender\OrderSender $orderSender;
+
+    private \Magento\Sales\Model\ResourceModel\Order\CollectionFactory $orderCollectionFactory;
     
     /**
      * 
@@ -35,12 +43,12 @@ class OrderHelper extends \Magento\Framework\View\Element\Template
         \Magento\Framework\View\Element\Template\Context $context,
         \Magento\Framework\Registry $registry,
         \Psr\Log\LoggerInterface $logger,
-        \Magento\Framework\ObjectManagerInterface $objectManager,
         \Magento\Quote\Api\CartRepositoryInterface $quoteRepository,
         \Magento\Sales\Model\OrderRepository $orderRepository,
         \Magento\Sales\Model\Order $order,
         \Magento\Sales\Model\Order\Email\Sender\OrderSender $orderSender,
         \Magento\Checkout\Model\Cart $modelCart,
+        \Magento\Sales\Model\ResourceModel\Order\CollectionFactory $orderCollectionFactory,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -50,26 +58,26 @@ class OrderHelper extends \Magento\Framework\View\Element\Template
         $this->modelCart = $modelCart;
         $this->order = $order;
         $this->orderSender = $orderSender;
+        $this->orderRepository = $orderRepository;
+        $this->orderCollectionFactory = $orderCollectionFactory;
 
     }
 
 
     /**
      * 
-     * 
+     *
      */
     public function getBodyOrderRequest($email)
     {
         $jsonBody ='-';
         $DNI = '9999999999'; //default
-        
+
      try {
-              $objectManager =  \Magento\Framework\App\ObjectManager::getInstance();
-              
-              $orderDatamodel = $objectManager->get('Magento\Sales\Model\Order')->getCollection();
+              $orderDatamodel = $this->orderCollectionFactory->create();
               $orderDatamodel = $orderDatamodel->addFieldToFilter('customer_email', ['eq' => $email])->getLastItem();
-               
-              $order = $objectManager->create('\Magento\Sales\Model\Order')->load($orderDatamodel->getId());
+
+              $order = $this->orderRepository->get($orderDatamodel->getId());
         
               $quoteId = $order->getId();
               

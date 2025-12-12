@@ -11,6 +11,7 @@ use Magento\Framework\Message\ManagerInterface;
 use \Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Sales\Model\Order\Payment\Transaction;
+use Magento\Sales\Model\ResourceModel\Order\CollectionFactory as OrderCollectionFactory;
 
 class Cart extends \Magento\Framework\View\Element\Template
 {
@@ -31,12 +32,16 @@ class Cart extends \Magento\Framework\View\Element\Template
     private $orderRepository;
 
     protected $quoteRepository;
-    
+
     protected $checkoutSession;
-    
+
     protected $customerSession;
-    
+
     protected $quoteFactory;
+
+    protected \Magento\Sales\Model\Order $order;
+
+    protected \Magento\Sales\Model\ResourceModel\Order\CollectionFactory $orderCollectionFactory;
 
     
     /**
@@ -53,6 +58,7 @@ class Cart extends \Magento\Framework\View\Element\Template
         \Magento\Customer\Model\Session $customerSession,
         \Magento\Sales\Model\OrderRepository $orderRepository,
         \Magento\Sales\Model\Order $order,
+        \Magento\Sales\Model\ResourceModel\Order\CollectionFactory $orderCollectionFactory,
         \Magento\Quote\Model\QuoteFactory $quoteFactory,
         \Magento\Checkout\Model\Cart $cart,
         array $data = []
@@ -66,6 +72,7 @@ class Cart extends \Magento\Framework\View\Element\Template
         $this->quoteRepository = $quoteRepository;
         $this->orderRepository = $orderRepository;
         $this->order = $order;
+        $this->orderCollectionFactory = $orderCollectionFactory;
         $this->cart = $cart;
         $this->checkoutSession = $checkoutSession;
         $this->customerSession = $customerSession;
@@ -79,20 +86,19 @@ class Cart extends \Magento\Framework\View\Element\Template
      */
     public function getCartItems($email)
     {
-        try {                   
+        try {
               $this->logger->debug('----Restore cart items----');
-              
-                $objectManager =  \Magento\Framework\App\ObjectManager::getInstance();
-                $orderDatamodel = $objectManager->get('Magento\Sales\Model\Order')->getCollection();
+
+                $orderDatamodel = $this->orderCollectionFactory->create();
                 $orderDatamodel = $orderDatamodel->addFieldToFilter('customer_email', ['eq' => $email])->getLastItem();
-                
-                $order = $objectManager->create('\Magento\Sales\Model\Order')->load($orderDatamodel->getId());
-            
+
+                $order = $this->orderRepository->get($orderDatamodel->getId());
+
                 $quoteId = $order->getId();
                 $this->logger->debug($quoteId);
                 $this->logger->debug($order->getGrandTotal());
 
-                $quote = $objectManager->create('Magento\Quote\Model\QuoteFactory')->create()->load($order->getQuoteId());
+                $quote = $this->quoteFactory->create()->load($order->getQuoteId());
                 $this->logger->debug('QuoteID -- ' .$quote->getId());
 
                 //cancelamos la orden

@@ -3,6 +3,13 @@ namespace GetnetArg\Payments\Block;
 
 use Magento\Framework\View\Element\Template;
 use Magento\Framework\App\Request\Http;
+use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Store\Model\ScopeInterface;
+use Magento\Sales\Model\ResourceModel\Order\CollectionFactory as OrderCollectionFactory;
+use Magento\Sales\Api\OrderRepositoryInterface;
+use GetnetArg\Payments\Model\ClientWS;
+use GetnetArg\Payments\Model\Cart as CartModel;
+use GetnetArg\Payments\Model\OrderHelper;
 
 
 class Index extends Template
@@ -14,16 +21,26 @@ class Index extends Template
     const TEST_ENV = 'payment/argenmagento/test_environment';
     
     private $checkoutSession;
-    
-    protected $logger;
-    
-    protected $request;
-        
+
+    protected Http $request;
+
     protected $_checkoutSession;
 
     protected $_customerSession;
-    
+
     protected $urlBuilder;
+
+    private ScopeConfigInterface $scopeConfig;
+
+    private ClientWS $clientWs;
+
+    private OrderHelper $orderHelper;
+
+    private CartModel $cartModel;
+
+    private OrderCollectionFactory $orderCollectionFactory;
+
+    private OrderRepositoryInterface $orderRepository;
 
     /**
      * @param Template\Context $context
@@ -38,6 +55,12 @@ class Index extends Template
         \Psr\Log\LoggerInterface $logger,
         \Magento\Framework\UrlInterface $urlBuilder,
         Http $request,
+        ScopeConfigInterface $scopeConfig,
+        ClientWS $clientWs,
+        OrderHelper $orderHelper,
+        CartModel $cartModel,
+        OrderCollectionFactory $orderCollectionFactory,
+        OrderRepositoryInterface $orderRepository,
         array $data = []
     )
     {
@@ -47,6 +70,12 @@ class Index extends Template
         $this->logger = $logger;
         $this->urlBuilder = $urlBuilder;
         $this->request = $request;
+        $this->scopeConfig = $scopeConfig;
+        $this->clientWs = $clientWs;
+        $this->orderHelper = $orderHelper;
+        $this->cartModel = $cartModel;
+        $this->orderCollectionFactory = $orderCollectionFactory;
+        $this->orderRepository = $orderRepository;
     }
 
 
@@ -54,10 +83,8 @@ class Index extends Template
      * @return string
      */
     public function getUrlSDK(){
-        
-        $test = \Magento\Framework\App\ObjectManager::getInstance()
-        ->get(\Magento\Framework\App\Config\ScopeConfigInterface::class)
-        ->getValue(self::TEST_ENV,\Magento\Store\Model\ScopeInterface::SCOPE_STORE,);
+
+        $test = $this->scopeConfig->getValue(self::TEST_ENV, ScopeInterface::SCOPE_STORE);
         
 //        $this->logger->debug('TEST ENV --> ' . $test);
         
@@ -79,24 +106,15 @@ class Index extends Template
     public function getScript()
     {
         $this->logger->debug('------------------Init Script-------------------');
-        
-        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-        
-        $clienId = \Magento\Framework\App\ObjectManager::getInstance()
-                ->get(\Magento\Framework\App\Config\ScopeConfigInterface::class)
-                ->getValue(self::CLIENT_ID,\Magento\Store\Model\ScopeInterface::SCOPE_STORE,);
 
-        $secret = \Magento\Framework\App\ObjectManager::getInstance()
-                ->get(\Magento\Framework\App\Config\ScopeConfigInterface::class)
-                ->getValue(self::SECRET_ID,\Magento\Store\Model\ScopeInterface::SCOPE_STORE,);
+        $clienId = $this->scopeConfig->getValue(self::CLIENT_ID, ScopeInterface::SCOPE_STORE);
 
-        $testEnv = \Magento\Framework\App\ObjectManager::getInstance()
-        ->get(\Magento\Framework\App\Config\ScopeConfigInterface::class)
-        ->getValue(self::TEST_ENV,\Magento\Store\Model\ScopeInterface::SCOPE_STORE,);
+        $secret = $this->scopeConfig->getValue(self::SECRET_ID, ScopeInterface::SCOPE_STORE);
 
-        /////////GET TOKEN /////////                
-        $configHelper = $objectManager->create('GetnetArg\Payments\Model\ClientWS');
-        $token = $configHelper->getToken($clienId, $secret, $testEnv);
+        $testEnv = $this->scopeConfig->getValue(self::TEST_ENV, ScopeInterface::SCOPE_STORE);
+
+        /////////GET TOKEN /////////
+        $token = $this->clientWs->getToken($clienId, $secret, $testEnv);
         
         $Client_id = $this->request->getParam('prx');
         $email = base64_decode($Client_id);
@@ -117,37 +135,33 @@ class Index extends Template
 
         if($token == 'invalido'){
             //enable cartItems
-            $configHelper = $objectManager->create('GetnetArg\Payments\Model\Cart');
-            $configHelper->getCartItems($email);
+            $this->cartModel->getCartItems($email);
             $script = 'alert("No se pudo generar la intención de pago, por favor intente de nuevo. Si el problema persiste, contacte con un ejecutivo Getnet.");
                             window.history.go(-2);';
             return $script;
         }
 
 
-        /////////GET BODY /////////        
-        $orderHelper = $objectManager->create('GetnetArg\Payments\Model\OrderHelper');
-        $bodyRequest = $orderHelper->getBodyOrderRequest($email);
+        /////////GET BODY /////////
+        $bodyRequest = $this->orderHelper->getBodyOrderRequest($email);
 
         
         
         
         /////////GET PAYMENT INTENT ID /////////
-        $payIntentId = $configHelper->getPaymentIntentID($token, $bodyRequest, $testEnv);
+        $payIntentId = $this->clientWs->getPaymentIntentID($token, $bodyRequest, $testEnv);
         
          $this->logger->debug('$payIntentId --> ' .$payIntentId);
         
         if($payIntentId == 'error') {
             //enable cartItems
-            $configHelper = $objectManager->create('GetnetArg\Payments\Model\Cart');
-            $configHelper->getCartItems($email);
+            $this->cartModel->getCartItems($email);
             $script = 'alert("Error al generar la intención de pago");
                         window.history.go(-2);';
 
         } else if($payIntentId == 'currency_error') {
             //enable cartItems
-            $configHelper = $objectManager->create('GetnetArg\Payments\Model\Cart');
-            $configHelper->getCartItems($email);
+            $this->cartModel->getCartItems($email);
             $script = 'alert("Tipo de moneda no soportada");
                             window.history.go(-2);';
             
@@ -187,12 +201,10 @@ class Index extends Template
      */
     public function getOrderStatus($email)
     {
-        $objectManager =  \Magento\Framework\App\ObjectManager::getInstance();
-              
-        $orderDatamodel = $objectManager->get('Magento\Sales\Model\Order')->getCollection();
+        $orderDatamodel = $this->orderCollectionFactory->create();
         $orderDatamodel = $orderDatamodel->addFieldToFilter('customer_email', ['eq' => $email])->getLastItem();
-         
-        $order = $objectManager->create('\Magento\Sales\Model\Order')->load($orderDatamodel->getId());
+
+        $order = $this->orderRepository->get($orderDatamodel->getId());
 
         $status = $order->getStatus();
 
