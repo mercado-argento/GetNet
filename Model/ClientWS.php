@@ -198,9 +198,43 @@ class ClientWS extends \Magento\Framework\View\Element\Template
                 $this->logger->debug($e);
                 $this->messageManager->addError('Error al intentar la operacion');
         }
-        
+
         return $response;
 
+    }
+
+
+    /**
+     * Capture an authorized payment
+     */
+    public function capturePayment($token, $jsonBody, $testEnv)
+    {
+        $this->logger->debug('----------------capturePayment--------------------');
+
+        if ($testEnv == '1') {
+            $url = 'https://api-sbx.pre.globalgetnet.com/dpm/payments-gwproxy/v2/payments/capture';
+        } else {
+            $url = 'https://api.globalgetnet.com/dpm/payments-gwproxy/v2/payments/capture';
+        }
+
+        $this->logger->debug('url --> ' . $url);
+        $this->logger->debug('body --> ' . $jsonBody);
+
+        try {
+            $this->_curl->addHeader("Content-Type", "application/json");
+            $this->_curl->addHeader("Authorization", "Bearer " . $token);
+            $this->_curl->addHeader("Accept", "application/json");
+            $this->_curl->post($url, $jsonBody);
+            $response = $this->_curl->getBody();
+
+            $this->logger->debug('Response service Capture --> ' . $response);
+        } catch (\Magento\Framework\Exception\Exception $e) {
+            $this->logger->debug($e);
+            $this->messageManager->addError('Error al intentar capturar el pago');
+            $response = '';
+        }
+
+        return $response;
     }
     
     

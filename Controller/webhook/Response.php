@@ -17,7 +17,6 @@ use Magento\Quote\Model\QuoteIdMask;
 use Magento\Quote\Model\QuoteIdMaskFactory;
 use \stdClass;
 use \Magento\Sales\Api\OrderRepositoryInterface;
-use Magento\Sales\Model\Order\Email\Sender\OrderSender;
 use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Sales\Model\Order\Payment\Transaction;
 use Magento\Framework\UrlInterface;
@@ -56,7 +55,6 @@ class Response extends \Magento\Framework\App\Action\Action implements CsrfAware
     
     protected $transactionBuilder;
     
-    protected $orderSender;
     
     protected $_quoteFactory;
     
@@ -92,7 +90,6 @@ class Response extends \Magento\Framework\App\Action\Action implements CsrfAware
         QuoteFactory $quoteFactory,
         QuoteIdMaskFactory $quoteIdMaskFactory,
         ScopeConfig $scopeConfig,
-        OrderSender $orderSender,
         JsonFactory $jsonResultFactory,
         \Magento\Checkout\Model\Cart $modelCart
     )
@@ -115,7 +112,6 @@ class Response extends \Magento\Framework\App\Action\Action implements CsrfAware
         $this->modelCart = $modelCart;
         $this->scopeConfig = $scopeConfig;
         $this->order = $order;
-        $this->orderSender = $orderSender;
         $this->jsonResultFactory = $jsonResultFactory;
         
     }
@@ -241,8 +237,8 @@ class Response extends \Magento\Framework\App\Action\Action implements CsrfAware
                     
                     $status = $order->getState();
                     $payment = $order->getPayment();
-                    
-                    if($status != 'processing'){
+
+                    if($status != \Magento\Sales\Model\Order::STATE_PAYMENT_REVIEW){
 
                         if ($order) {
                                 try {                                                                        
@@ -254,17 +250,17 @@ class Response extends \Magento\Framework\App\Action\Action implements CsrfAware
                                     ->setLastRealOrderId($order->getIncrementId())
                                     ->setLastOrderStatus($order->getStatus());
 
-                                    $order->setState(\Magento\Sales\Model\Order::STATE_PROCESSING);
-                                    $order->setStatus(\Magento\Sales\Model\Order::STATE_PROCESSING);
+                                    $order->setState(\Magento\Sales\Model\Order::STATE_PAYMENT_REVIEW);
+                                    $order->setStatus('payment_review');
                                     $order->setGrandTotal($grandTotal);
                                     
                                     
                                     try{
                                         if($interes !== 0){
-                                            $order->addStatusHistoryComment(__('Payment process with ').$method .' , paymentID: ' .$paymentID .' - Authorization Code: ' . $authCode .'  >>>>> Interes: ' . $interes/ 100 , false);
+                                            $order->addStatusHistoryComment(__('Payment authorized with ').$method .' , paymentID: ' .$paymentID .' - Authorization Code: ' . $authCode .'  >>>>> Interes: ' . $interes/ 100 , false);
                                         } else {
-                                            $order->addStatusHistoryComment(__('Payment process with ').$method .' , paymentID: ' .$paymentID .' - Authorization Code: ' . $authCode, false);
-                                            
+                                            $order->addStatusHistoryComment(__('Payment authorized with ').$method .' , paymentID: ' .$paymentID .' - Authorization Code: ' . $authCode, false);
+
                                         }
                                         $order->save();
                                     } catch (\Exception $e) {
@@ -274,13 +270,13 @@ class Response extends \Magento\Framework\App\Action\Action implements CsrfAware
                                     
                                     $payment = $order->getPayment();
                                     $payment->setLastTransId($paymentID);
-                                    $payment->setIsTransactionClosed(true);
-                                    $payment->setShouldCloseParentTransaction(true);
+                                    $payment->setIsTransactionClosed(false);
+                                    $payment->setShouldCloseParentTransaction(false);
                                     $transaction = $payment->addTransaction(
                                         \Magento\Sales\Model\Order\Payment\Transaction::TYPE_AUTH
                                         );
-                                    
-                                    $payment->setIsTransactionPending(false);
+
+                                    $payment->setIsTransactionPending(true);
                                     $payment->setIsTransactionApproved(true);
                                     
                                     $addresss = $objectManager->get('\Magento\Customer\Model\AddressFactory');
@@ -301,7 +297,8 @@ class Response extends \Magento\Framework\App\Action\Action implements CsrfAware
                                     $payment->setAdditionalInformation('interes', $interes);
                                     $payment->setAdditionalInformation('paymentID', $paymentID);
                                     $payment->setAdditionalInformation('method', 'argenmagento');
-                                    $payment->setAdditionalInformation('pagoAprobado', 'si');
+                                    $payment->setAdditionalInformation('authorized_amount', $amount);
+                                    $payment->setAdditionalInformation('pagoAprobado', null);
                                     
         
                                     $transaction = $this->transactionBuilder->setPayment($payment)
@@ -309,42 +306,14 @@ class Response extends \Magento\Framework\App\Action\Action implements CsrfAware
                                     ->setTransactionId($paymentID)
                                     ->setAdditionalInformation($payment->getTransactionAdditionalInfo())
                                     ->build(Transaction::TYPE_AUTH);
-                                    
-                                    
+
+
                                     $payment->setParentTransactionId(null);
                                     $payment->save();
-                                    
-                                    //send email
-                                    $this->orderSender->send($order);
-                                    
-                                    
-                                    //  CREATE INVOICE
-                                    $invoice = $objectManager->create('Magento\Sales\Model\Service\InvoiceService')->prepareInvoice($order);
-                                    $invoice = $invoice->setTransactionId($payment->getTransactionId())
-                                    ->addComment("Invoice created.")
-                                    ->setRequestedCaptureCase(\Magento\Sales\Model\Order\Invoice::CAPTURE_ONLINE);
-                                    
-                                    $invoice->setGrandTotal($grandTotal);
-                                    $invoice->setBaseGrandTotal($baseGrandTotal);
-                                    
-                                    $invoice->register()->pay();
-                                    $invoice->save();
-                                    
-                                    
-                                    // Save the invoice to the order
-                                    $transaction = $this->_objectManager->create('Magento\Framework\DB\Transaction')
-                                    ->addObject($invoice)
-                                    ->addObject($invoice->getOrder());
-                                    $transaction->save();
-                                    
-                                    
-                                    $order->addStatusHistoryComment(__('Invoice #%1.', $invoice->getId()) )
-                                    ->setIsCustomerNotified(true);
-                                    
+
                                     $order->save();
-                                    $transaction->save();
-                                    
-                                    $this->logger->debug('guardo transacción');
+
+                                    $this->logger->debug('Authorization stored, awaiting capture');
                                     
                                     if ($order) {
                                         $this->logger->debug('-order-');
@@ -353,7 +322,7 @@ class Response extends \Magento\Framework\App\Action\Action implements CsrfAware
                                         ->setLastOrderStatus($order->getStatus());
                                     }
                                     
-                                    $this->messageManager->addSuccessMessage(__('Your payment was processed correctly'));
+                                    $this->messageManager->addSuccessMessage(__('Your payment was authorized and is pending capture'));
                                     
                                 } catch (\Magento\Framework\Exception\NoSuchEntityException $e) {
                                     $this->messageManager->addErrorMessage(__('Error while saving the transaction'));
